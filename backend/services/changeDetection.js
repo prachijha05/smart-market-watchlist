@@ -1,6 +1,7 @@
 // The core "meaningful change" algorithm — Section 4 of the spec.
 // Volatility-relative thresholds, not a flat % rule, because 2% is noise
 // for a volatile stock and huge for a stable one.
+
 const { PriceSnapshot, UserLastSeen, ChangeEvent } = require("../models");
 const { mean, stdDev } = require("../utils/stats");
 
@@ -13,6 +14,7 @@ async function evaluateItem(userId, watchlistItem) {
   const latest = await PriceSnapshot.findOne({ symbol }).sort({
     fetchedAt: -1,
   });
+
   if (!latest) {
     // Feed hasn't produced data for this symbol yet
     return {
@@ -29,22 +31,17 @@ async function evaluateItem(userId, watchlistItem) {
     Date.now() - new Date(latest.fetchedAt).getTime() > STALE_THRESHOLD_MS;
 
   let lastSeen = await UserLastSeen.findOne({ userId, symbol });
+
+  // Do NOT automatically create UserLastSeen here.
+  // The baseline should only change when the user explicitly
+  // clicks "Mark as seen".
   if (!lastSeen) {
-    // First time this user has ever seen this symbol — seed the baseline,
-    // nothing to diff against yet, so severity is 'none' by definition.
-    lastSeen = await UserLastSeen.create({
-      userId,
-      symbol,
-      lastSeenAt: new Date(),
-      lastSeenPrice: latest.price,
-      lastSeenVolume: latest.volume,
-    });
     return {
       symbol,
       price: latest.price,
-      changeSinceLastSeen: "+0.0%",
+      changeSinceLastSeen: 0,
       severity: "none",
-      reason: "",
+      reason: "No previous check yet",
       asOf: latest.fetchedAt,
       stale,
     };
@@ -57,6 +54,7 @@ async function evaluateItem(userId, watchlistItem) {
   const recent = await PriceSnapshot.find({ symbol })
     .sort({ fetchedAt: -1 })
     .limit(LOOKBACK);
+
   const prices = recent.map((s) => s.price);
   const volumes = recent.map((s) => s.volume);
   const avgPrice = mean(prices);
@@ -74,8 +72,15 @@ async function evaluateItem(userId, watchlistItem) {
   // (short-lived, simulated) snapshot history — documented simplification.
   const allTime = await PriceSnapshot.aggregate([
     { $match: { symbol } },
-    { $group: { _id: null, max: { $max: "$price" }, min: { $min: "$price" } } },
+    {
+      $group: {
+        _id: null,
+        max: { $max: "$price" },
+        min: { $min: "$price" },
+      },
+    },
   ]);
+
   const high = allTime[0]?.max;
   const low = allTime[0]?.min;
 
@@ -83,10 +88,12 @@ async function evaluateItem(userId, watchlistItem) {
     alertPriceHigh != null &&
     latest.price >= alertPriceHigh &&
     lastSeen.lastSeenPrice < alertPriceHigh;
+
   const crossedLow =
     alertPriceLow != null &&
     latest.price <= alertPriceLow &&
     lastSeen.lastSeenPrice > alertPriceLow;
+
   const isNewHigh = high != null && latest.price >= high;
   const isNewLow = low != null && latest.price <= low;
 
@@ -104,14 +111,22 @@ async function evaluateItem(userId, watchlistItem) {
     isNewLow
   ) {
     severity = "meaningful";
-    if (crossedHigh) reason = `crossed your alert high of ₹${alertPriceHigh}`;
-    else if (crossedLow) reason = `crossed your alert low of ₹${alertPriceLow}`;
-    else if (isNewHigh) reason = "hit a new high";
-    else if (isNewLow) reason = "hit a new low";
-    else if (volumeRatio > 2.5)
+
+    if (crossedHigh) {
+      reason = `crossed your alert high of ₹${alertPriceHigh}`;
+    } else if (crossedLow) {
+      reason = `crossed your alert low of ₹${alertPriceLow}`;
+    } else if (isNewHigh) {
+      reason = "hit a new high";
+    } else if (isNewLow) {
+      reason = "hit a new low";
+    } else if (volumeRatio > 2.5) {
       reason = `volume ${volumeRatio.toFixed(1)}x average`;
-    else
-      reason = `moved ${(pctChange * 100).toFixed(1)}%, beyond its normal range`;
+    } else {
+      reason = `moved ${(pctChange * 100).toFixed(
+        1,
+      )}%, beyond its normal range`;
+    }
   } else if (absPctChange > 0.75 * volatility) {
     severity = "notable";
     reason = `moved ${(pctChange * 100).toFixed(1)}%`;
@@ -131,7 +146,9 @@ async function evaluateItem(userId, watchlistItem) {
   return {
     symbol,
     price: latest.price,
-    changeSinceLastSeen: `${pctChange >= 0 ? "+" : ""}${(pctChange * 100).toFixed(1)}%`,
+    changeSinceLastSeen: `${pctChange >= 0 ? "+" : ""}${(
+      pctChange * 100
+    ).toFixed(1)}%`,
     severity,
     reason,
     asOf: latest.fetchedAt,

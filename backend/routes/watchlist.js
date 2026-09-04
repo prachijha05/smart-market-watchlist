@@ -36,7 +36,18 @@ router.get("/", async (req, res) => {
     const items = await WatchlistItem.find({ userId: req.user._id }).sort({
       addedAt: -1,
     });
-    res.json(items);
+
+    const enriched = await Promise.all(
+      items.map(async (item) => {
+        const evalResult = await evaluateItem(req.user._id, item);
+        return {
+          ...item.toObject(),
+          ...evalResult,
+        };
+      }),
+    );
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch watchlist" });
   }
