@@ -1,0 +1,162 @@
+.app {
+  max-width: 700px;
+  margin: 2rem auto;
+  font-family: system-ui, sans-serif;
+  padding: 0 1rem;
+}
+
+.header-stat {
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.add-symbol-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.add-symbol-form input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.add-symbol-form button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #1e1e2e;
+  color: white;
+  cursor: pointer;
+}
+
+.add-symbol-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-error {
+  color: #e53935;
+  width: 100%;
+}
+
+.watchlist-row {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+.watchlist-row.severity-meaningful {
+  border-left: 4px solid #e53935;
+}
+
+.watchlist-row.severity-notable {
+  border-left: 4px solid #fbc02d;
+}
+
+.watchlist-row.severity-none {
+  border-left: 4px solid #43a047;
+}
+
+.row-main {
+  display: grid;
+  grid-template-columns: 100px 100px 130px 1fr 90px;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+}
+
+.symbol {
+  font-weight: 600;
+}
+
+.price {
+  font-weight: 500;
+}
+
+.severity-badge {
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.reason {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.as-of {
+  font-size: 0.8rem;
+  color: #999;
+  text-align: right;
+}
+
+.stale-badge {
+  background: #999;
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  margin-right: 0.4rem;
+}
+
+.row-expanded {
+  padding: 1rem;
+  background: #fafafa;
+  border-top: 1px solid #eee;
+}
+
+.row-expanded-top {
+  margin-bottom: 1rem;
+}
+
+.row-expanded-top p {
+  margin-top: 0;
+}
+
+.row-expanded-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.row-expanded-actions button {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #1e1e2e;
+  color: white;
+}
+
+.row-expanded-actions button.danger {
+  background: #e53935;
+}
+
+.sparkline {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.sparkline-empty {
+  display: inline-block;
+  color: #999;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.status-msg {
+  color: #666;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.status-msg.error {
+  color: #e53935;
+}
