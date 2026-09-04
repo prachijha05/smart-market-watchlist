@@ -44,27 +44,48 @@ function randomWalkStep(symbol) {
   state[symbol] = { price: newPrice, volume: newVolume };
   return state[symbol];
 }
+// Track symbols currently in a simulated failure state, so the failure
+// persists for a few ticks instead of resolving on the very next one.
+const failedUntil = {};
 
 async function tick() {
   const symbols = Object.keys(SEED_PRICES);
+  const now = Date.now();
+
+  // Maybe start a new failure (only if nothing's currently failing)
+  const anyCurrentlyFailing = Object.values(failedUntil).some((t) => t > now);
+  if (!anyCurrentlyFailing && Math.random() < 0.1) {
+    const target = symbols[Math.floor(Math.random() * symbols.length)];
+    failedUntil[target] = now + 30 * 1000; // stays "failed" for 30s (~3 ticks)
+    console.warn(`⚠️ Simulated feed failure for ${target} (30s)`);
+  }
+
   const snapshots = symbols.map((symbol) => {
+    const isFailing = failedUntil[symbol] && failedUntil[symbol] > now;
+
+    if (isFailing) {
+      const { price, volume } = state[symbol];
+      return {
+        symbol,
+        price,
+        volume,
+        fetchedAt: new Date(now - 3 * 60 * 1000), // still backdated past stale threshold
+        source: 'cache-stale',
+      };
+    }
+
     const { price, volume } = randomWalkStep(symbol);
-    return {
-      symbol,
-      price,
-      volume,
-      fetchedAt: new Date(),
-      source: "simulated",
-    };
+    return { symbol, price, volume, fetchedAt: new Date(), source: 'simulated' };
   });
 
   try {
     await PriceSnapshot.insertMany(snapshots);
     console.log(`📈 Tick: wrote ${snapshots.length} snapshots`);
   } catch (err) {
-    console.error("❌ Market feed tick failed:", err.message);
+    console.error('❌ Market feed tick failed:', err.message);
   }
 }
+
 
 function startMarketFeed() {
   // Every 10 seconds — frequent enough to feel "live" in a demo,
